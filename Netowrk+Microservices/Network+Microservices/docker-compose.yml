@@ -1,0 +1,103 @@
+# Self-Healing Network -- service topology (Person 1)
+#
+# One user-defined bridge network. Docker runs an embedded DNS server on it, so
+# containers resolve each other by service name ("http://auth:8000") instead of
+# by IP -- the same name-based service discovery the DNS unit of the course
+# describes. Only the gateway publishes a port to the host; everything else is
+# reachable only from inside the network.
+
+name: chhabra-cn
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: shn-postgres
+    environment:
+      POSTGRES_USER: shn
+      POSTGRES_PASSWORD: shn_password
+      POSTGRES_DB: shn
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      shnnet:
+        aliases: [postgres]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shn -d shn"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    image: shn/auth:0.1.0
+    container_name: shn-auth
+    environment:
+      AUTH_SECRET: dev-secret-change-me
+      TOKEN_TTL_S: "3600"
+      LOG_LEVEL: INFO
+    networks:
+      shnnet:
+        aliases: [auth]
+    # No published port: auth is internal-only, reachable at http://auth:8000.
+    restart: unless-stopped
+
+  inventory:
+    build:
+      context: .
+      dockerfile: services/inventory/Dockerfile
+    image: shn/inventory:0.1.0
+    container_name: shn-inventory
+    environment:
+      DATABASE_URL: postgresql://shn:shn_password@postgres:5432/shn
+      AUTH_URL: http://auth:8000
+      HTTP_TIMEOUT_S: "3.0"
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      shnnet:
+        aliases: [inventory]
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    image: shn/gateway:0.1.0
+    container_name: shn-gateway
+    environment:
+      AUTH_URL: http://auth:8000
+      INVENTORY_URL: http://inventory:8000
+      HTTP_TIMEOUT_S: "3.0"
+      LOG_LEVEL: INFO
+    depends_on:
+      auth:
+        condition: service_started
+      inventory:
+        condition: service_started
+    ports:
+      # host:container -- the single entry point for the whole system.
+      - "8080:8000"
+    networks:
+      shnnet:
+        aliases: [gateway]
+    restart: unless-stopped
+
+networks:
+  shnnet:
+    driver: bridge
+    ipam:
+      config:
+        # A fixed subnet makes packet captures readable: every address in
+        # 172.28.0.0/16 belongs to this project.
+        - subnet: 172.28.0.0/16
+
+volumes:
+  pgdata:
