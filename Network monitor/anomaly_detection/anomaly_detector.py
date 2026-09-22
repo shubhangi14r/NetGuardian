@@ -13,33 +13,23 @@ ML_FEATURES = [
 ]
 
 ML_MODELS = {
-    "api-service": joblib.load(
-        "api-service_isolation_forest.pkl"
-    ),
-
-    "secondary-service": joblib.load(
-        "secondary-service_isolation_forest.pkl"
-    ),
-
-    "database-service": joblib.load(
-        "database-service_isolation_forest.pkl"
-    )
+    "gateway": joblib.load("gateway_isolation_forest.pkl"),
+    "auth": joblib.load("auth_isolation_forest.pkl"),
+    "inventory": joblib.load("inventory_isolation_forest.pkl")
 }
 
 THRESHOLDS = {
-    "api-service": {
-        "latency": 2.305,
-        "response_time": 5.235
+    "gateway": {
+        "latency": 1.96,
+        "response_time": 3.98
     },
-
-    "database-service": {
-        "latency": 0.595,
-        "response_time": 3.455
+    "auth": {
+        "latency": 0.54,
+        "response_time": 2.77
     },
-
-    "secondary-service": {
-        "latency": 0.670,
-        "response_time": 3.580
+    "inventory": {
+        "latency": 0.47,
+        "response_time": 2.53
     }
 }
 FAILURE_RATE_THRESHOLD = 20
@@ -117,7 +107,7 @@ def detect_anomalies(metrics):
         return anomalies
 
     # Rule 3: High latency
-    latency_limit = service_thresholds["latency"] * 1.5
+    latency_limit = service_thresholds["latency"]
 
     if (
         metrics["latency"] is not None
@@ -132,7 +122,7 @@ def detect_anomalies(metrics):
         })
 
     # Rule 4: High response time
-    response_limit = service_thresholds["response_time"] * 1.5
+    response_limit = service_thresholds["response_time"]
 
     if (
         metrics["response_time"] is not None
