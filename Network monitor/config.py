@@ -5,13 +5,11 @@ Edit SERVICES to point at whatever your teammates' services expose.
 Each service just needs a URL that returns any HTTP response
 (a dedicated /health endpoint is ideal, but any reachable route works).
 """
-
 SERVICES = [
-    {"name": "api-service", "url": "http://127.0.0.1:8001/health"},
-    {"name": "secondary-service", "url": "http://127.0.0.1:8002/health"},
-    {"name": "database-service", "url": "http://127.0.0.1:8003/health"},
+    {"name": "gateway", "url": "http://gateway:8000/health"},
+    {"name": "auth", "url": "http://auth:8000/health"},
+    {"name": "inventory", "url": "http://inventory:8000/health"},
 ]
-
 # How often to probe each service (seconds)
 POLL_INTERVAL_SECONDS = 2
 
