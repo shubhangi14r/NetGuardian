@@ -188,3 +188,41 @@ the source copy.
   fine as a stopgap, but Person 2's collector should scrape and persist it.
 - Adding a fourth service later means one block in `docker-compose.yml` plus an
   entry in the gateway's `DOWNSTREAM` map; nothing else needs to change.
+
+
+## Dashboard (Person 3)
+
+A React/Vite dashboard is included at `../../../frontend`.
+
+It consumes the existing contracts rather than replacing backend logic:
+
+- `GET /api/status` — live gateway/service state and probe latency
+- `GET /api/topology` — service graph
+- `GET /api/items` — inventory catalogue
+- `POST /api/items/{sku}/stock` — authenticated stock adjustment
+- `GET http://localhost:9000/metrics` — rolling network metrics
+- `GET http://localhost:9001/anomalies` — rule-based + Isolation Forest anomalies
+
+Run the complete gateway + dashboard stack with:
+
+```bash
+docker compose up -d --build
+```
+
+Then open `http://localhost:5173`.
+
+For the live monitoring/anomaly panels, also run the two Python APIs:
+
+```bash
+cd "../../../Network monitor"
+uvicorn monitor_api:app --reload --port 9000
+```
+
+```bash
+cd anomaly_detection
+uvicorn anomaly_api:app --reload --port 9001
+```
+
+The frontend auto-refreshes every 3 seconds. It also keeps the existing
+microservice authentication flow: login goes through the gateway, and stock
+writes send the returned bearer token to the protected inventory endpoint.

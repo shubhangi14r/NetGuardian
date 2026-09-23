@@ -1,6 +1,7 @@
 import requests
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from anomaly_detector import (
     validate_metrics,
@@ -13,6 +14,13 @@ MONITOR_URL = "http://127.0.0.1:9000/metrics"
 
 app = FastAPI(
     title="NetGuardian Anomaly Detection API"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
