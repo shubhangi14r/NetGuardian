@@ -226,3 +226,147 @@ uvicorn anomaly_api:app --reload --port 9001
 The frontend auto-refreshes every 3 seconds. It also keeps the existing
 microservice authentication flow: login goes through the gateway, and stock
 writes send the returned bearer token to the protected inventory endpoint.
+
+
+## Running the Integrated System
+
+### Prerequisites
+
+Make sure the following are installed:
+
+* Docker Desktop
+* Python 3
+* Node.js and npm
+* Git
+
+### 1. Start Docker Desktop
+
+Make sure Docker Desktop is running before starting the NetGuardian microservices.
+
+### 2. Start the Docker Services
+
+Navigate to the directory containing `docker-compose.yml`:
+
+```bash
+cd "Netowrk+Microservices/Network+Microservices"
+```
+
+Build and start the complete Docker stack:
+
+```bash
+docker compose up -d --build
+```
+
+Check the running containers:
+
+```bash
+docker compose ps
+```
+
+The Docker stack contains:
+
+* PostgreSQL
+* Authentication service
+* Inventory service
+* Gateway service
+* React frontend
+
+The main endpoints are:
+
+```text
+Frontend:  http://localhost:5173
+Gateway:   http://localhost:8080
+Auth:      http://localhost:8001
+Inventory: http://localhost:8002
+```
+
+### 3. Start the Network Monitor
+
+Open a new terminal and navigate to:
+
+```bash
+cd "Network monitor"
+```
+
+Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start the monitoring API:
+
+```bash
+uvicorn monitor_api:app --reload --port 9000
+```
+
+The live metrics endpoint is:
+
+```text
+http://localhost:9000/metrics
+```
+
+### 4. Start the Anomaly Detection API
+
+Open another terminal and navigate to:
+
+```bash
+cd "Network monitor/anomaly_detection"
+```
+
+Install the required dependencies:
+
+```bash
+pip install pandas numpy scikit-learn joblib fastapi uvicorn requests
+```
+
+Start the anomaly detection API:
+
+```bash
+uvicorn anomaly_api:app --reload --port 9001
+```
+
+The anomaly detection endpoint is:
+
+```text
+http://localhost:9001/anomalies
+```
+
+### 5. Open the Dashboard
+
+Once the Docker services, Network Monitor, and Anomaly Detection API are running, open:
+
+```text
+http://localhost:5173
+```
+
+The dashboard provides:
+
+* Service health monitoring
+* Network latency
+* Response time
+* Failure rate
+* P95 latency
+* Live service metrics
+* Network topology
+* Rule-based anomaly detection
+* ML-based anomaly detection
+* Inventory management
+* Authentication
+
+### 6. Stopping the System
+
+To stop the Docker services:
+
+```bash
+docker compose down
+```
+
+For the Network Monitor and Anomaly Detection APIs, press:
+
+```text
+Ctrl + C
+```
+
+in their respective terminals.
+
