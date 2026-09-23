@@ -39,6 +39,8 @@ services:
       AUTH_SECRET: dev-secret-change-me
       TOKEN_TTL_S: "3600"
       LOG_LEVEL: INFO
+    ports:
+    - "8001:8000"
     networks:
       shnnet:
         aliases: [auth]
@@ -61,6 +63,8 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+    ports:
+    - "8002:8000"
     networks:
       shnnet:
         aliases: [inventory]
@@ -88,6 +92,23 @@ services:
     networks:
       shnnet:
         aliases: [gateway]
+    restart: unless-stopped
+
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    image: netguardian/frontend:1.0.0
+    container_name: netguardian-frontend
+    depends_on:
+      gateway:
+        condition: service_started
+    ports:
+      - "5173:80"
+    networks:
+      shnnet:
+        aliases: [frontend]
     restart: unless-stopped
 
 networks:
