@@ -1,12 +1,14 @@
-import pandas as pd
-
 
 def explain_anomaly(model, input_data):
     """
-    Local sensitivity explanation for Isolation Forest.
+    Explain an Isolation Forest prediction using
+    multi-scale feature perturbation.
 
-    Measures how changing one feature by +10% or
-    -10% affects the model's anomaly decision score.
+    Lower decision_function scores indicate
+    more anomalous observations.
+
+    Sensitivity is NOT a probability or
+    a causal feature contribution.
     """
 
     original_score = float(
@@ -15,38 +17,49 @@ def explain_anomaly(model, input_data):
 
     explanations = []
 
+    # Test larger changes than the previous 10%.
+    multipliers = [0.0, 0.25, 0.5, 0.75, 1.25, 2.0]
+
     for feature in input_data.columns:
-        original_value = float(input_data.iloc[0][feature])
+        original_value = float(
+            input_data.iloc[0][feature]
+        )
 
-        # Use a nonzero step even for zero-valued features.
-        step = max(abs(original_value) * 0.10, 0.01)
+        results = []
 
-        changed_scores = []
-
-        for new_value in (
-            original_value + step,
-            original_value - step
-        ):
+        for multiplier in multipliers:
             modified = input_data.copy()
-            modified.loc[modified.index[0], feature] = max(
-                0.0, new_value
-            )
+
+            if original_value == 0:
+                new_value = multiplier
+            else:
+                new_value = original_value * multiplier
+
+            modified.loc[
+                modified.index[0], feature
+            ] = new_value
 
             new_score = float(
                 model.decision_function(modified)[0]
             )
 
-            changed_scores.append(new_score)
+            results.append({
+                "tested_value": round(new_value, 6),
+                "score_change": round(
+                    new_score - original_score, 6
+                )
+            })
 
         sensitivity = max(
-            abs(score - original_score)
-            for score in changed_scores
+            abs(item["score_change"])
+            for item in results
         )
 
         explanations.append({
             "feature": feature,
             "value": original_value,
-            "sensitivity": round(sensitivity, 6)
+            "sensitivity": round(sensitivity, 6),
+            "tested_changes": results
         })
 
     explanations.sort(
@@ -54,8 +67,17 @@ def explain_anomaly(model, input_data):
         reverse=True
     )
 
+    top_feature = (
+        explanations[0]["feature"]
+        if explanations
+        and explanations[0]["sensitivity"] > 0
+        else None
+    )
+
     return {
-        "method": "local_sensitivity",
-        "top_feature": explanations[0]["feature"],
+        "method": "multi_scale_sensitivity",
+        "original_score": round(original_score, 6),
+        "top_feature": top_feature,
+        "explanation_available": top_feature is not None,
         "feature_explanations": explanations
     }
