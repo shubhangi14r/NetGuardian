@@ -13,9 +13,11 @@ model = ML_MODELS[service]
 
 # Demonstration values only, not actual traffic.
 sample_values = {
-    feature: 100.0 for feature in ML_FEATURES
+    "latency": 10.0,
+    "response_time": 15.0,
+    "p95_latency_ms": 25.0,
+    "p95_response_time_ms": 35.0
 }
-
 input_data = pd.DataFrame(
     [[sample_values[f] for f in ML_FEATURES]],
     columns=ML_FEATURES
