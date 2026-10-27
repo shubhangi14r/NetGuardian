@@ -1,0 +1,2 @@
+# Self-healing module uses the Python standard library only.
+# Requires the Docker CLI on the machine that runs it (Docker Desktop is fine).
