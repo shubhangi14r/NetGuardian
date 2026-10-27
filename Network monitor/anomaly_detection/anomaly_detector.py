@@ -1,10 +1,14 @@
 import requests
 import time
+import os
 import joblib
 import pandas as pd
-from xai_explainer import explain_anomaly
+from pathlib import Path
+from .xai_explainer import explain_anomaly
 
 MONITOR_URL = "http://127.0.0.1:9000/metrics"
+
+MODEL_DIR = Path(__file__).resolve().parent
 
 ML_FEATURES = [
     "latency",
@@ -14,38 +18,31 @@ ML_FEATURES = [
 ]
 
 ML_MODELS = {
-    "api-service": joblib.load(
-        "api-service_isolation_forest.pkl"
-    ),
-
-    "secondary-service": joblib.load(
-        "secondary-service_isolation_forest.pkl"
-    ),
-
-    "database-service": joblib.load(
-        "database-service_isolation_forest.pkl"
-    )
+    "gateway": joblib.load(MODEL_DIR / "gateway_isolation_forest.pkl"),
+    "auth": joblib.load(MODEL_DIR / "auth_isolation_forest.pkl"),
+    "inventory": joblib.load(MODEL_DIR / "inventory_isolation_forest.pkl")
 }
 
+# Provisional operational thresholds, in milliseconds.
+# Recalibrate after collecting representative baseline traffic.
 THRESHOLDS = {
-    "api-service": {
-        "latency": 2.305,
-        "response_time": 5.235
+    "gateway": {
+        "latency": 20.0,
+        "response_time": 50.0
     },
-
-    "database-service": {
-        "latency": 0.595,
-        "response_time": 3.455
+    "auth": {
+        "latency": 20.0,
+        "response_time": 50.0
     },
-
-    "secondary-service": {
-        "latency": 0.670,
-        "response_time": 3.580
+    "inventory": {
+        "latency": 20.0,
+        "response_time": 50.0
     }
 }
 FAILURE_RATE_THRESHOLD = 20
 MIN_SAMPLES = 5
 
+ENABLE_ML_ALERTS = os.getenv("ENABLE_ML_ALERTS", "true").lower() == "true"
 
 REQUIRED_FIELDS = [
     "service",
@@ -118,7 +115,7 @@ def detect_anomalies(metrics):
         return anomalies
 
     # Rule 3: High latency
-    latency_limit = service_thresholds["latency"] * 1.5
+    latency_limit = service_thresholds["latency"]
 
     if (
         metrics["latency"] is not None
@@ -133,7 +130,7 @@ def detect_anomalies(metrics):
         })
 
     # Rule 4: High response time
-    response_limit = service_thresholds["response_time"] * 1.5
+    response_limit = service_thresholds["response_time"]
 
     if (
         metrics["response_time"] is not None
