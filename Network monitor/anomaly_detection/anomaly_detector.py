@@ -2,6 +2,7 @@ import requests
 import time
 import joblib
 import pandas as pd
+from xai_explainer import explain_anomaly
 
 MONITOR_URL = "http://127.0.0.1:9000/metrics"
 
@@ -170,14 +171,19 @@ def detect_ml_anomaly(metrics):
     prediction = model.predict(input_data)[0]
     score = model.decision_function(input_data)[0]
 
+    # Explain the model's prediction using XAI
+    explanation = explain_anomaly(model, input_data)
+
     if prediction == -1:
         return {
             "is_anomaly": True,
             "type": "ML_ANOMALY",
             "severity": "warning",
             "score": round(float(score), 4),
-            "message": "Network behaviour is unusual compared with the learned baseline"
+            "message": "Network behaviour is unusual compared with the learned baseline",
+            "explanation": explanation
         }
+
 
     return {
         "is_anomaly": False,
