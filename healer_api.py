@@ -87,7 +87,6 @@ def main() -> None:
         f"NetGuardian self-healing API on http://localhost:{config.API_PORT}",
         flush=True,
     )
-
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -95,6 +94,7 @@ def main() -> None:
     finally:
         healer.stop()
         server.server_close()
+
 
 if __name__ == "__main__":
     main()
