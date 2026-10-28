@@ -77,15 +77,23 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    healer.pause(True)  # Safe startup: monitoring only, no automatic recovery
     healer.start()
-    server = ThreadingHTTPServer((config.API_HOST, config.API_PORT), Handler)
-    print(f"NetGuardian self-healing API on http://localhost:{config.API_PORT}", flush=True)
+
+    server = ThreadingHTTPServer(
+        (config.API_HOST, config.API_PORT), Handler
+    )
+    print(
+        f"NetGuardian self-healing API on http://localhost:{config.API_PORT}",
+        flush=True,
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         healer.stop()
+        server.server_close()
 
 
 if __name__ == "__main__":

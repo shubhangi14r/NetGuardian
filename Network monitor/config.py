@@ -1,25 +1,35 @@
 """
-Configuration for NetGuardian Network Monitoring module.
+Configuration for NetGuardian Network Monitoring.
 
-Edit SERVICES to point at whatever your teammates' services expose.
-Each service just needs a URL that returns any HTTP response
-(a dedicated /health endpoint is ideal, but any reachable route works).
+Use Docker service names when running inside the Docker network.
+Use localhost URLs when running the monitor directly on your host.
 """
 
-SERVICES = [
-    {"name": "gateway", "url": "http://127.0.0.1:8080/health"},
-    {"name": "auth", "url": "http://127.0.0.1:8001/health"},
-    {"name": "inventory", "url": "http://127.0.0.1:8002/health"},
-]
+import os
+
+RUNNING_IN_DOCKER = os.getenv("RUNNING_IN_DOCKER", "false").lower() == "true"
+
+if RUNNING_IN_DOCKER:
+    SERVICES = [
+        {"name": "gateway", "url": "http://gateway:8000/health"},
+        {"name": "auth", "url": "http://auth:8000/health"},
+        {"name": "inventory", "url": "http://inventory:8000/health"},
+    ]
+else:
+    SERVICES = [
+        {"name": "gateway", "url": "http://localhost:8080/health"},
+        {"name": "auth", "url": "http://localhost:8001/health"},
+        {"name": "inventory", "url": "http://localhost:8002/health"},
+    ]
 
 # How often to probe each service (seconds)
 POLL_INTERVAL_SECONDS = 2
 
-# How many recent probes to keep per service for rolling stats
-WINDOW_SIZE = 60  # e.g. 60 probes * 2s interval = last 2 minutes
+# Number of recent probes used for rolling statistics
+WINDOW_SIZE = 60
 
-# Request timeout (seconds) — a timeout counts as a failed probe
+# Request timeout (seconds)
 REQUEST_TIMEOUT_SECONDS = 1.5
 
-# A service is marked DOWN after this many consecutive failed probes
+# Mark a service DOWN after this many consecutive failures
 DOWN_AFTER_CONSECUTIVE_FAILURES = 3

@@ -1,9 +1,10 @@
 import requests
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from anomaly_detector import (
+from .anomaly_detector import (
     validate_metrics,
     detect_anomalies,
     detect_ml_anomaly
@@ -54,11 +55,14 @@ def analyse_service(metrics):
     ml_result = detect_ml_anomaly(metrics)
 
 
-    # -----------------------------
+        # -----------------------------
     # Step 4: Combine severity
     # -----------------------------
 
     overall_status = "HEALTHY"
+    ml_alerts_enabled = (
+        os.getenv("ENABLE_ML_ALERTS", "true").lower() == "true"
+    )
 
     # Critical rule beats everything else
     if any(
@@ -71,13 +75,13 @@ def analyse_service(metrics):
     elif rule_anomalies:
         overall_status = "WARNING"
 
-    # ML-only anomaly
+    # ML-only anomaly, when ML alerts are enabled
     elif (
         ml_result is not None
         and ml_result["is_anomaly"]
+        and ml_alerts_enabled
     ):
         overall_status = "WARNING"
-
 
     # -----------------------------
     # Step 5: Final clean output

@@ -1,8 +1,23 @@
+import {
+  LayoutDashboard,
+  Activity,
+  Network,
+  Boxes,
+  BrainCircuit,
+  ShieldCheck,
+  RefreshCw,
+  LogOut,
+  ArrowUpRight,
+  Bell,
+  Search,
+} from "lucide-react";
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 const GATEWAY = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8080";
 const MONITOR = import.meta.env.VITE_MONITOR_URL || "http://localhost:9000";
 const ANOMALY = import.meta.env.VITE_ANOMALY_URL || "http://localhost:9001";
+const HEALER = import.meta.env.VITE_HEALER_URL || "http://localhost:9002";
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -18,7 +33,7 @@ async function requestJson(url, options = {}) {
   return body;
 }
 
-const fmt = (n, digits = 1) => n == null ? "—" : Number(n).toFixed(digits);
+const fmt = (n, digits = 1) => n == null ? "-" : Number(n).toFixed(digits);
 const statusClass = (s) => String(s || "").toLowerCase().replace(/\s+/g, "-");
 
 function App() {
@@ -105,12 +120,21 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar page={page} setPage={setPage} user={user} onLogout={logout} />
+      <Sidebar page={page} setPage={setPage} user={user} onLogout={logout} status={status} />
       <main className="main">
         <header className="topbar">
           <div>
             <div className="eyebrow">NETWORK OPERATIONS CENTER</div>
-            <h1>{page === "dashboard" ? "NetGuardian Dashboard" : page === "services" ? "Service Health" : page === "inventory" ? "Inventory Control" : "Network Topology"}</h1>
+            <h1>
+              {{
+                dashboard: "NetGuardian Dashboard",
+                services: "Service Health",
+                inventory: "Inventory Control",
+                topology: "Network Topology",
+                anomalies: "AI Anomaly Detection",
+                healing: "Self-Healing Center",
+              }[page] || "NetGuardian Dashboard"}
+            </h1>
           </div>
           <div className="top-actions">
             <div className={`live-pill ${status?.overall === "HEALTHY" ? "ok" : "warn"}`}>
@@ -139,50 +163,61 @@ function App() {
           />
         )}
         {page === "services" && <Services rows={serviceRows} anomalies={anomalies} />}
-        {page === "inventory" && <Inventory items={items} onAdjust={adjustStock} />}
         {page === "topology" && <Topology topology={topology} status={status} />}
+        {page === "anomalies" && <AnomalyDetection anomalies={anomalies} />}
+        {page === "healing" && <SelfHealing healerUrl={HEALER} />}
       </main>
     </div>
   );
 }
 
-function Sidebar({ page, setPage, user, onLogout }) {
+function Sidebar({ page, setPage, user, onLogout, status }) {
   const nav = [
-    ["dashboard", "▦", "Overview"],
-    ["services", "◉", "Services"],
-    ["topology", "⌁", "Network Map"],
-    ["inventory", "▤", "Inventory"],
+    { id: "dashboard", label: "Overview", icon: LayoutDashboard },
+    { id: "services", label: "Services", icon: Activity },
+    { id: "topology", label: "Network Map", icon: Network },
+    { id: "anomalies", label: "AI Detection", icon: BrainCircuit },
+    { id: "healing", label: "Self-Healing", icon: ShieldCheck },
   ];
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <div className="brand-mark"><span>NG</span></div>
-        <div><strong>NetGuardian</strong><small>SELF-HEALING NETWORK</small></div>
-      </div>
-      <div className="side-section">MONITORING</div>
-      {nav.map(([id, icon, label]) => (
-        <button key={id} className={`nav-item ${page === id ? "active" : ""}`} onClick={() => setPage(id)}>
-          <span className="nav-icon">{icon}</span>{label}
-        </button>
-      ))}
-      <div className="side-section">SYSTEM</div>
-      <div className="side-status">
-        <span className="status-dot green" />
-        <div><b>Gateway</b><small>localhost:8080</small></div>
-      </div>
-      <div className="side-status">
-        <span className="status-dot cyan" />
-        <div><b>Monitor</b><small>localhost:9000</small></div>
-      </div>
-      <div className="sidebar-bottom">
-        <div className="user-card">
-          <div className="avatar small">{(user || "N")[0].toUpperCase()}</div>
-          <div><b>{user || "Not signed in"}</b><small>{user ? "Authenticated" : "Login required"}</small></div>
-          {user && <button onClick={onLogout} className="logout">↪</button>}
+    <header className="app-header">
+      <div className="brandbar">
+        <div className="brand">
+          <div className="brand-mark"><span>NG</span></div>
+          <div><strong>NetGuardian</strong><small>SELF-HEALING NETWORK</small></div>
         </div>
-        <div className="version">NETGUARDIAN v1.0 • LIVE</div>
+        <div className="brand-context">
+          <span className="brand-context-label">NETWORK OPERATIONS CENTER</span>
+          <span className="brand-context-detail">Service monitoring and automated recovery</span>
+        </div>
+        <div className="brand-version">NETGUARDIAN v1.0</div>
       </div>
-    </aside>
+      <div className="nav-bar">
+        <nav className="nav-list" aria-label="Main navigation">
+          {nav.map(({ id, icon: Icon, label }) => (
+            <button
+              key={id}
+              className={`nav-item ${page === id ? "active" : ""}`}
+              onClick={() => setPage(id)}
+              aria-current={page === id ? "page" : undefined}
+            >
+              <Icon size={17} strokeWidth={1.8} />
+              <span>{label}</span>
+              {id === "anomalies" && <span className="nav-badge">AI</span>}
+            </button>
+          ))}
+        </nav>
+        <div className={`nav-health ${status?.overall === "HEALTHY" ? "ok" : "warn"}`}>
+          <span className="status-dot green" />
+          <span>{status?.overall || "CONNECTING"}</span>
+        </div>
+        <div className="nav-user">
+          <div className="avatar small">{(user || "N")[0].toUpperCase()}</div>
+          <div className="nav-user-copy"><b>{user || "Not signed in"}</b><small>{user ? "Authenticated" : "Login required"}</small></div>
+          {user && <button onClick={onLogout} className="logout" aria-label="Log out" title="Log out"><LogOut size={16} /></button>}
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -193,7 +228,7 @@ function Dashboard({ status, serviceRows, critical, warning, healthy, upCount, a
   return (
     <div className="content">
       <section className="hero-grid">
-        <MetricCard label="NETWORK STATUS" value={status?.overall || "—"} sub={status?.unhealthy?.length ? `${status.unhealthy.length} service(s) affected` : "All monitored services operational"} accent={status?.overall === "HEALTHY" ? "green" : "orange"} icon="◉" />
+        <MetricCard label="NETWORK STATUS" value={status?.overall || "-"} sub={status?.unhealthy?.length ? `${status.unhealthy.length} service(s) affected` : "All monitored services operational"} accent={status?.overall === "HEALTHY" ? "green" : "orange"} icon="◉" />
         <MetricCard label="SERVICES ONLINE" value={`${upCount}/${serviceRows.length || 0}`} sub="Live service health" accent="cyan" icon="◈" />
         <MetricCard label="AVG LATENCY" value={`${fmt(avgLatency)} ms`} sub="Across monitored services" accent="purple" icon="⌁" />
         <MetricCard label="ANOMALIES" value={critical + warning} sub={`${critical} critical · ${warning} warning`} accent={critical ? "red" : warning ? "orange" : "green"} icon="!" />
@@ -201,7 +236,7 @@ function Dashboard({ status, serviceRows, critical, warning, healthy, upCount, a
 
       <div className="section-row">
         <SectionTitle title="SERVICE HEALTH" action="View all" onClick={() => onNavigate("services")} />
-        <span className="updated">Updated {lastUpdated ? lastUpdated.toLocaleTimeString() : "—"}</span>
+        <span className="updated">Updated {lastUpdated ? lastUpdated.toLocaleTimeString() : "-"}</span>
       </div>
       <div className="service-grid">
         {serviceRows.map(s => <ServiceCard key={s.service} row={s} />)}
@@ -275,7 +310,7 @@ function ServiceCard({ row }) {
       <div className="service-metrics">
         <div><span>Latency</span><b>{fmt(m?.latency ?? row.latency_ms)} ms</b></div>
         <div><span>Response</span><b>{fmt(m?.response_time)} ms</b></div>
-        <div><span>Failures</span><b>{m?.failure_rate_pct != null ? `${fmt(m.failure_rate_pct)}%` : "—"}</b></div>
+        <div><span>Failures</span><b>{m?.failure_rate_pct != null ? `${fmt(m.failure_rate_pct)}%` : "-"}</b></div>
       </div>
       <div className="spark"><span /><span /><span /><span /><span /><span /><span /><span /></div>
     </div>
@@ -344,5 +379,334 @@ function LoginModal({ onLogin }) {
     <small className="demo">Demo users: <b>tej / cn2026</b> · admin / admin123 · guest / guest</small>
   </form></div>;
 }
+
+
+function AnomalyDetection({ anomalies }) {
+  const critical = anomalies.filter((a) => a.overall_status === "CRITICAL");
+  const warning = anomalies.filter((a) => a.overall_status === "WARNING");
+  const healthy = anomalies.filter((a) => a.overall_status === "HEALTHY");
+
+  return (
+    <div className="content">
+      <div className="page-intro">
+        <div>
+          <div className="eyebrow">MACHINE LEARNING · SECURITY</div>
+          <h2>AI Anomaly Detection</h2>
+          <p>
+            Monitor service anomalies, rule-based alerts, and AI-generated
+            feature sensitivity explanations.
+          </p>
+        </div>
+        <span className="live-pill ok">
+          <span className="pulse" /> LIVE DATA
+        </span>
+      </div>
+
+      <div className="hero-grid anomaly-stats">
+        <MetricCard label="CRITICAL" value={critical.length} sub="Services requiring attention" accent="red" icon="!" />
+        <MetricCard label="WARNING" value={warning.length} sub="Services to investigate" accent="orange" icon="!" />
+        <MetricCard label="HEALTHY" value={healthy.length} sub="Services without active alerts" accent="green" icon="✓" />
+        <MetricCard label="MONITORED" value={anomalies.length} sub="Services returned by the anomaly API" accent="cyan" icon="AI" />
+      </div>
+
+      {anomalies.length === 0 ? (
+        <section className="panel">
+          <div className="empty">
+            No anomaly records available. Check that the anomaly API is running.
+          </div>
+        </section>
+      ) : (
+        <div className="anomaly-cards">
+          {anomalies.map((anomaly, index) => {
+            const ml = anomaly.ml;
+            const explanation = ml?.explanation;
+            const features = explanation?.feature_explanations ?? [];
+            const rules = anomaly.rule_anomalies ?? [];
+            const state = anomaly.overall_status ?? "UNKNOWN";
+
+            return (
+              <section className="panel" key={anomaly.service || index} style={{ marginBottom: 18 }}>
+                <div className="section-title">
+                  <h2>{anomaly.service || "Unknown service"}</h2>
+                  <span className={`alert-tag ${statusClass(state)}`}>{state}</span>
+                </div>
+
+                <div className="service-metrics">
+                  <div><span>Network status</span><b>{anomaly.network_status ?? "Unknown"}</b></div>
+                  <div><span>Rule alerts</span><b>{rules.length}</b></div>
+                  <div><span>ML decision score</span><b>{ml?.score != null ? fmt(ml.score, 4) : "-"}</b></div>
+                </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <h3>Rule-based signals</h3>
+                  {rules.length ? (
+                    <ul>
+                      {rules.map((rule, i) => (
+                        <li key={`${rule.type}-${i}`}>
+                          <strong>{rule.type}</strong> - {rule.message}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p>No rule-based alerts.</p>}
+                </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <h3>Machine learning result</h3>
+                  <p>{ml?.message ?? "No ML result returned."}</p>
+                  {ml?.is_anomaly && <span className="alert-tag warning">ML ANOMALY</span>}
+                </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <h3>Explainable AI · Feature sensitivity</h3>
+                  {explanation?.top_feature ? (
+                    <>
+                      <p>
+                        Most sensitive feature: <strong>{explanation.top_feature}</strong>
+                      </p>
+                      <p>Explanation method: {explanation.method ?? "Sensitivity analysis"}</p>
+                      {features.length > 0 ? (
+                        <div className="table-panel">
+                          <table>
+                            <thead>
+                              <tr><th>Feature</th><th>Observed value</th><th>Sensitivity</th></tr>
+                            </thead>
+                            <tbody>
+                              {features.map((feature) => (
+                                <tr key={feature.feature}>
+                                  <td><strong>{feature.feature}</strong></td>
+                                  <td>{fmt(feature.value, 3)}</td>
+                                  <td>{fmt(feature.sensitivity, 6)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : <p>No feature-level details returned.</p>}
+                    </>
+                  ) : (
+                    <p>No feature sensitivity explanation is available for this result.</p>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+      <p className="metric-foot anomaly-note">
+        Sensitivity measures how the model score changes under tested feature perturbations;
+        it is not a probability or proof of causation.
+      </p>
+    </div>
+  );
+}
+
+function SelfHealing({ healerUrl }) {
+  const [snapshot, setSnapshot] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const [statusData, eventData] = await Promise.all([
+        requestJson(`${healerUrl}/healing/status`),
+        requestJson(`${healerUrl}/healing/events?limit=50`),
+      ]);
+      setSnapshot(statusData);
+      setEvents(Array.isArray(eventData) ? eventData : eventData.events || []);
+      setError("");
+    } catch (e) {
+      setError(`Self-healing API unavailable: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [healerUrl]);
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 4000);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  const action = async (path, confirmation) => {
+    if (confirmation && !window.confirm(confirmation)) return;
+    setBusy(true);
+    setNotice("");
+    setError("");
+    try {
+      const result = await requestJson(`${healerUrl}${path}`, {
+        method: "POST",
+      });
+      const messages = {
+        "/healing/pause": "Automatic healing paused successfully.",
+        "/healing/resume": "Automatic healing resumed successfully.",
+      };
+
+      setNotice(messages[path] || result?.message || "Action completed successfully.");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const services = snapshot?.services || [];
+  const overall = snapshot?.overall || "UNKNOWN";
+  const paused = snapshot?.paused === true ||
+    snapshot?.healer === "PAUSED";
+
+  return (
+    <section className="page-content">
+      <div className="page-intro">
+        <div>
+          <div className="eyebrow">AUTOMATED REMEDIATION</div>
+          <h2>Self-Healing Center</h2>
+          <p>Monitor service recovery, restart attempts, and healing events.</p>
+        </div>
+        <button className="secondary-btn" onClick={load} disabled={loading}>
+          <RefreshCw size={16} /> Refresh
+        </button>
+      </div>
+
+      {error && <div className="alert-banner">{error}</div>}
+      {notice && <div className="alert-banner">{notice}</div>}
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span>Healer Status</span>
+          <strong>{paused ? "PAUSED" : overall}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Monitored Services</span>
+          <strong>{services.length}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Total Restarts</span>
+          <strong>{snapshot?.total_restarts ?? 0}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Successful Recoveries</span>
+          <strong>{snapshot?.total_recoveries ?? 0}</strong>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>Recovery Controls</h3>
+            <p>Automatic remediation can be paused without stopping monitoring.</p>
+          </div>
+          <button
+            className="primary-btn"
+            disabled={busy || loading || !snapshot}
+            onClick={() => action(
+              paused ? "/healing/resume" : "/healing/pause",
+              `Are you sure you want to ${paused ? "resume" : "pause"} automatic healing?`
+            )}
+          >
+            {paused ? "Resume Healing" : "Pause Healing"}
+          </button>
+        </div>
+        <p className="muted">
+          Automatic actions restart real Docker containers. Use manual recovery
+          only when you intend to affect the selected service.
+        </p>
+      </div>
+
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>Service Recovery Status</h3>
+            <p>Live state and recovery statistics from the healer backend.</p>
+          </div>
+        </div>
+
+        {loading && <p>Loading self-healing status…</p>}
+        {!loading && !error && services.length === 0 &&
+          <p>No service status records returned by the API.</p>}
+
+        {services.length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>State</th>
+                  <th>Container</th>
+                  <th>Restarts</th>
+                  <th>Recoveries</th>
+                  <th>Last Recovery</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map((s) => (
+                  <tr key={s.service}>
+                    <td>{s.service}</td>
+                    <td>
+                      <span className={`status-badge ${String(s.state || "").toLowerCase()}`}>
+                        {s.state || "UNKNOWN"}
+                      </span>
+                    </td>
+                    <td>{s.container || "-"}</td>
+                    <td>{s.total_restarts ?? 0}</td>
+                    <td>{s.total_recoveries ?? 0}</td>
+                    <td>
+                      {s.last_recovery_s == null
+                        ? "Never"
+                        : `${Number(s.last_recovery_s).toFixed(1)} s`}
+                    </td>
+                    <td>
+                      <button
+                        className="secondary-btn"
+                        disabled={busy || loading}
+                        onClick={() => action(
+                          `/healing/heal/${encodeURIComponent(s.service)}`,
+                          `Trigger a real recovery action for ${s.service}? This may start or restart its Docker container.`
+                        )}
+                      >
+                        Heal
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>Recent Healing Events</h3>
+            <p>Latest decisions, remediation attempts, and recovery outcomes.</p>
+          </div>
+          <span className="muted">{events.length} events</span>
+        </div>
+
+        {events.length === 0
+          ? <p>No healing events returned yet.</p>
+          : (
+            <div className="event-list">
+              {events.map((event, index) => (
+                <div className="event-row" key={`${event.ts}-${index}`}>
+                  <div>
+                    <strong>{event.event || "EVENT"}</strong>
+                    <p>{event.service || "System"} · {event.detail || event.msg || ""}</p>
+                  </div>
+                  <time>{event.ts ? new Date(event.ts * 1000).toLocaleTimeString() : "Recent"}</time>
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+    </section>
+  );
+}
+
 
 export default App;
